@@ -9,6 +9,9 @@
 
 # Always track .gitignore
 !.gitignore
+!.gitattributes
+!README.md
+
 
 # Optional: ignore temporary/log files
 *.log
