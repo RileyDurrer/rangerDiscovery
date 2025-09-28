@@ -1,6 +1,9 @@
 # Ignore everything
 *
 
+#Ignore specific file types or folders in case I change ignore everything
+*.env
+
 # Track Python files
 !*.py
 
