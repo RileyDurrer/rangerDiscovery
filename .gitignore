@@ -1,0 +1,15 @@
+# Ignore everything
+*
+
+# Track Python files
+!*.py
+
+# Track folders (but not their contents by default)
+!*/
+
+# Always track .gitignore
+!.gitignore
+
+# Optional: ignore temporary/log files
+*.log
+*.tmp
