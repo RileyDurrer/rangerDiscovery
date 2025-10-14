@@ -5,6 +5,7 @@ import random
 import sys
 import time
 from datetime import datetime
+import requests
 
 # Third-party packages
 import pandas as pd
@@ -12,26 +13,6 @@ import psycopg
 from dotenv import load_dotenv
 from playwright.sync_api import sync_playwright
 
-#Set Variables
-#county_link = "https://freestone.tx.publicsearch.us/"  # Example county link, replace with actual
-#county="Freestone"
-
-#counties = {
-#    "Freestone": {"id": "081", "link": "https://freestone.tx.publicsearch.us/", "host": "GovOS"},
-#    "Anderson": {"id": "001", "link": "https://anderson.tx.publicsearch.us/", "host": "GovOS"},
-#}
-
-#Load environment variables
-#DB_NAME, DB_USER, DB_PASSWORD
-load_dotenv(dotenv_path=r"C:\Users\milom\Documents\landman\.env")
-
-conn = psycopg.connect(
-    dbname=os.getenv("DB_NAME"),
-    user=os.getenv("DB_USER"),
-    password=os.getenv("DB_PASSWORD"),
-    host=os.getenv("DB_HOST"),
-    port=os.getenv("DB_PORT"),
-)
 
 #Scrapes file metadata related to a search term from a county public records website 
 def get_search_results_table(search, county, county_link, page):
@@ -148,15 +129,58 @@ def get_search_results_table(search, county, county_link, page):
         row["source_county"] = county
 
     return results_list
-         
+
+
+
+def get_document(link, county_name, page):
+    base_dir = r"C:\\Users\\milom\\Documents\\landman\\county_clerk_docs"
+    output_dir = os.path.join(base_dir, county_name)
+    os.makedirs(output_dir, exist_ok=True)
+
+    print(f"➡️ Accessing {link}…")
+    page.goto(link)
+    page.wait_for_timeout(1500)
+
+    # Hide the metadata panel
+    hide_button = page.query_selector("button.css-okyhgk")
+    if hide_button:
+        hide_button.click()
+        page.wait_for_timeout(500)
+
+    # Prepare viewport and zoom for better resolution
+    page.set_viewport_size({"width": 4000, "height": 3200})
+    page.evaluate("document.body.style.zoom = '200%'")
+    page.evaluate("document.body.style.background = 'white'")
+
+    # Select all SVG <image> elements (actual document scans)
+    images = page.query_selector_all("svg image")
+    downloaded_files = []
+    page_index = 1
+
+    for img in images:
+        href = img.get_attribute("xlink:href")
+        if not href or "/images/" not in href:
+            continue
+
+        img.scroll_into_view_if_needed()
+
+        filename = f"page_{page_index}.png"
+        filepath = os.path.join(output_dir, filename)
+        img.screenshot(path=filepath, scale="device", omit_background=False)
+
+        downloaded_files.append(filepath)
+        print(f"✅ Saved page {page_index}")
+        page_index += 1
+
+    print(f"🎉 Completed document. Saved {len(downloaded_files)} pages to {output_dir}")
+    return downloaded_files
+
+    
 
 
 
 
-
-
-
-def scrape_documents_from_row(row, page, output_dir=r"C:\Users\milom\Documents\landman\county_clerk_docs\Freestone"):
+def scrape_documents_from_row(link, page, output_dir=r"C:\Users\milom\Documents\landman\county_clerk_docs\Freestone"):
     """
     Clicks a search result row, saves all document images, then returns to results.
     """
@@ -164,7 +188,7 @@ def scrape_documents_from_row(row, page, output_dir=r"C:\Users\milom\Documents\l
     os.makedirs(output_dir, exist_ok=True)
 
     print("➡️ Opening row…")
-    row.click()
+    link.click()
     page.wait_for_timeout(2000)
 
     multi_btn = page.query_selector("button.css-1vdp520")
@@ -200,7 +224,24 @@ def scrape_documents_from_row(row, page, output_dir=r"C:\Users\milom\Documents\l
 #insert_results(df, conn)
 #print("Data insertion complete.")
 
-conn.close()
+
+if __name__ == "__main__":
+    # Example usage
+    county = "Freestone"
+    county_link = "https://freestone.tx.publicsearch.us/"
+    search_term = "Alford John"
+
+    with sync_playwright() as p:
+        browser = p.chromium.launch(headless=False)
+        page = browser.new_page()
+        
+        files=get_document('https://freestone.tx.publicsearch.us/doc/94458756', county, page)
+        print(files)
+
+        print("Document scraping complete.")
+
+        browser.close()
+
 
 
 

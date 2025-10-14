@@ -17,6 +17,13 @@ import dbutils
 import scraper_functions
 
 def main():
+    #options 
+
+    refresh_searches=True  #whether to use old searches from db or not
+    #True ubtil you build get_search_term_headers function
+
+    save_searches=True     #whether to save new searches to db
+
     #Set Variables
     counties = {
         "Freestone": {"code": "081", "link": "https://freestone.tx.publicsearch.us/", "host": "GovOS"},
@@ -48,10 +55,31 @@ def main():
 
         # Each function gets its own page for isolation
         page1 = context.new_page()
-        search_table=scraper_functions.get_search_results_table(search_term, county_name, county_link, page1)
-        dbutils.insert_search_table_results(search_table, conn)
 
-        #page2 = context.new_page()
+        #get all associated headders for search term from DB or scrape new
+        #look if search term already exists in DB
+        if not dbutils.check_search_term_exists(search_term, county_name, conn) or refresh_searches:
+            search_table=scraper_functions.get_search_results_table(search_term, county_name, county_link, page1)
+            if save_searches:
+                dbutils.insert_search_table_results(search_table, conn)
+        else:
+            search_table=dbutils.get_search_term_headers(search_term, county_name, conn)
+
+        #Scrape document for each header in search_table if not already in DB
+        search_table = dbutils.add_doc_paths_to_search_table(search_table, county_name, conn)
+
+        page2 = context.new_page()
+
+        #for each row find doc_path if none
+        for row in search_table:
+            if not row.get("doc_path"):
+                doc_path = scraper_functions.get_document({"doc_link": row["doc_link"]}, county_name, page2)
+                row["doc_path"]=doc_path
+
+
+
+
+
         
 
         browser.close()
