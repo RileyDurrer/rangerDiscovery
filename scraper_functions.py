@@ -6,6 +6,8 @@ import sys
 import time
 from datetime import datetime
 import requests
+from PIL import Image
+import glob
 
 # Third-party packages
 import pandas as pd
@@ -132,8 +134,12 @@ def get_search_results_table(search, county, county_link, page):
 
 
 
-def get_document(link, county_name, page):
-    base_dir = r"C:\\Users\\milom\\Documents\\landman\\county_clerk_docs"
+import os
+import glob
+from PIL import Image
+
+def get_document(link, doc_id, county_name, page):
+    base_dir = r"C:\Users\milom\Documents\landman\county_clerk_docs"
     output_dir = os.path.join(base_dir, county_name)
     os.makedirs(output_dir, exist_ok=True)
 
@@ -141,88 +147,65 @@ def get_document(link, county_name, page):
     page.goto(link)
     page.wait_for_timeout(1500)
 
-    # Hide the metadata panel
+    # Hide panel if visible
     hide_button = page.query_selector("button.css-okyhgk")
     if hide_button:
         hide_button.click()
         page.wait_for_timeout(500)
 
-    # Prepare viewport and zoom for better resolution
+    # Prepare environment for clarity
     page.set_viewport_size({"width": 4000, "height": 3200})
     page.evaluate("document.body.style.zoom = '200%'")
     page.evaluate("document.body.style.background = 'white'")
 
-    # Select all SVG <image> elements (actual document scans)
-    images = page.query_selector_all("svg image")
-    downloaded_files = []
-    page_index = 1
+    # Detect total pages from input box
+    page_input = page.query_selector("input[aria-label='Page Number']")
+    if not page_input:
+        print("⚠️ Page input box not found.")
+        return []
+    total_pages = int(page_input.get_attribute("max"))
+    print(f"📄 Total pages: {total_pages}")
 
-    for img in images:
-        href = img.get_attribute("xlink:href")
-        if not href or "/images/" not in href:
+    downloaded_files = []
+
+    # Capture all pages
+    for page_index in range(1, total_pages + 1):
+        page_input.fill(str(page_index))
+        page.evaluate("el => el.dispatchEvent(new Event('change', { bubbles: true }))", page_input)
+        page.wait_for_timeout(3500)  # give each page time to render
+
+        img = page.query_selector("svg image")
+        if not img:
+            print(f"⚠️ No image found on page {page_index}")
             continue
 
         img.scroll_into_view_if_needed()
-
         filename = f"page_{page_index}.png"
         filepath = os.path.join(output_dir, filename)
         img.screenshot(path=filepath, scale="device", omit_background=False)
-
         downloaded_files.append(filepath)
         print(f"✅ Saved page {page_index}")
-        page_index += 1
 
-    print(f"🎉 Completed document. Saved {len(downloaded_files)} pages to {output_dir}")
-    return downloaded_files
+    # Combine PNGs into one PDF
+    if downloaded_files:
+        image_files = sorted(glob.glob(os.path.join(output_dir, "page_*.png")))
+        first_image = Image.open(image_files[0]).convert("RGB")
+        others = [Image.open(img).convert("RGB") for img in image_files[1:]]
+        pdf_path = os.path.join(output_dir, f"{doc_id}.pdf")
+        first_image.save(pdf_path, save_all=True, append_images=others)
+        print(f"📄 Combined {len(image_files)} pages into {pdf_path}")
 
-    
+        # Delete PNGs after creating PDF
+        for img_file in image_files:
+            os.remove(img_file)
+        print("🧹 Deleted temporary PNG files.")
 
-
-
-
-def scrape_documents_from_row(link, page, output_dir=r"C:\Users\milom\Documents\landman\county_clerk_docs\Freestone"):
-    """
-    Clicks a search result row, saves all document images, then returns to results.
-    """
-    # Ensure output directory exists
-    os.makedirs(output_dir, exist_ok=True)
-
-    print("➡️ Opening row…")
-    link.click()
-    page.wait_for_timeout(2000)
-
-    multi_btn = page.query_selector("button.css-1vdp520")
-    if multi_btn:
-        multi_btn.click()
-        print("🖼️ Switched to Multi-View")
-
-    # Wait for at least one doc image
-    page.wait_for_selector("img[src*='/files/documents/']", timeout=20000)
-
-    # Scroll to load more pages
-    for _ in range(5):
-        page.mouse.wheel(0, 2000)
-        page.wait_for_timeout(1000)
-
-    # Collect only doc images
-    images = page.query_selector_all("img[src*='/files/documents/']")
-    print(f"  Found {len(images)} document page images")
-
-    for j, img in enumerate(images, start=1):
-        src = img.get_attribute("src")
-        alt = img.get_attribute("alt")
-        print(f"    Page {j}: alt={alt}, src={src}")
+        return pdf_path
+    else:
+        print("⚠️ No images captured — skipping PDF creation.")
+        return None
 
 
-
-       
-
-                         
-#df=scrape_related_files('Alford John', county)
-#print(df.head())
-#print("Scraping complete, inserting results into database...")
-#insert_results(df, conn)
-#print("Data insertion complete.")
 
 
 if __name__ == "__main__":
@@ -235,7 +218,7 @@ if __name__ == "__main__":
         browser = p.chromium.launch(headless=False)
         page = browser.new_page()
         
-        files=get_document('https://freestone.tx.publicsearch.us/doc/94458756', county, page)
+        files=get_document('https://freestone.tx.publicsearch.us/doc/94458756', "tester", county, page)
         print(files)
 
         print("Document scraping complete.")
