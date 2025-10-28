@@ -22,7 +22,9 @@ def main():
     refresh_searches=True  #whether to use old searches from db or not
     #True ubtil you build get_search_term_headers function
 
-    save_searches=True     #whether to save new searches to db
+    save_searches=False     #whether to save new searches to db
+
+    grab_documents=False   #whether to grab documents or not
 
     #Set Variables
     counties = {
@@ -65,16 +67,24 @@ def main():
         else:
             search_table=dbutils.get_search_term_headers(search_term, county_name, conn)
 
-        #Scrape document for each header in search_table if not already in DB
-        search_table = dbutils.add_doc_paths_to_search_table(search_table, county_name, conn)
+        #display search_table
+        df_search_table=pd.DataFrame(search_table)
+        print(df_search_table)
+        #save to csv for review
+        df_search_table.to_csv(r"C:\Users\milom\Documents\landman\search_table.csv", index=False)
 
-        page2 = context.new_page()
 
-        #for each row find doc_path if none
-        for row in search_table:
-            if not row.get("doc_path"):
-                doc_path = scraper_functions.get_document({"doc_link": row["doc_link"]}, county_name, page2)
-                row["doc_path"]=doc_path
+        if grab_documents:
+            #Scrape document for each header in search_table if not already in DB
+            search_table = dbutils.load_doc_paths_from_db_to_search_table(search_table, county_name, conn)
+            #Get documents from links
+            page2 = context.new_page()
+
+            #for each row find doc_path if none
+            for row in search_table:
+                if not row.get("doc_path"):
+                    doc_path = scraper_functions.get_document({"doc_link": row["doc_link"]}, county_name, page2)
+                    row["doc_path"]=doc_path
 
 
 
