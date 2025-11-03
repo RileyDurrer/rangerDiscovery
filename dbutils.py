@@ -107,6 +107,7 @@ def load_doc_paths_from_db_to_search_table(search_table, county, conn):
     Given a search_table (list of dicts) and a county,
     add 'doc_path' from clerk.documents_header if it exists in the DB.
     Keeps all original keys in each row.
+    Used to determine if a document needs to be scraped or not.
     """
     # Extract doc_numbers from the scraped data
     doc_numbers = [row["doc_number"] for row in search_table if row.get("doc_number")]

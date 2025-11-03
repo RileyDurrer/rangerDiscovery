@@ -75,6 +75,8 @@ def main():
 
 
         if grab_documents:
+
+            
             #Scrape document for each header in search_table if not already in DB
             search_table = dbutils.load_doc_paths_from_db_to_search_table(search_table, county_name, conn)
             #Get documents from links
