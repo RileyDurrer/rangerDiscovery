@@ -76,10 +76,7 @@ def main():
             #save to csv for review
             df_search_table.to_csv(r"C:\Users\milom\Documents\landman\search_table.csv", index=False)
 
-
         if grab_documents:
-
-            
             #Scrape document for each header in search_table if not already in DB
             search_table = dbutils.load_doc_paths_from_db_to_search_table(search_table, county_name, conn)
             #Get documents from links
@@ -91,12 +88,6 @@ def main():
                     doc_path = scraper_functions.get_document({"doc_link": row["doc_link"]}, county_name, page2)
                     row["doc_path"]=doc_path
                 break #remove after testing one document
-
-
-
-
-
-        
 
         browser.close()
 
