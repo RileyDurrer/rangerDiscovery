@@ -420,7 +420,9 @@ def get_document(link, doc_id, county_name, page):
             os.remove(img_file)
         print("🧹 Deleted temporary PNG files.")
 
-        return pdf_path
+        #remove base_dir from pdf_path for return
+        relative_pdf_path = os.path.relpath(pdf_path, base_dir)
+        return [relative_pdf_path]
     else:
         print("⚠️ No images captured — skipping PDF creation.")
         return None
