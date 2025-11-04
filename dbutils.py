@@ -2,84 +2,92 @@
 
 # db_utils.py or scraper_functions.py
 def insert_search_table_results(results_list, conn):
-    """
-    Insert/Upsert scraped results into:
-      - clerk.documents_header
-      - clerk.party_names
-      - clerk.document_parties
-
-    Args:
-        results_list: list of dictionaries from scraper (DB-ready)
-        conn: psycopg connection object
-    """
     doc_cols = [
-        "search_term",
-        "doc_type",
-        "recorded_date",
-        "doc_number",
-        "book_vol_page",
-        "legal_description",
-        "source_county",
-        "doc_link"
+        "search_term", "doc_type", "recorded_date", "doc_number",
+        "book_vol_page", "legal_description", "source_county", "doc_link",
+        "doc_path", "abstract_num", "county", "survey_name",
+        "acres", "subdivision", "case_number", "misc_legal"
     ]
+
+    insert_doc_sql = """
+        INSERT INTO clerk.document_header (
+            search_term, doc_type, recorded_date, doc_number,
+            book_vol_page, legal_description, source_county, doc_link,
+            doc_path, abstract_num, county, survey_name,
+            acres, subdivision, case_number, misc_legal
+        )
+        VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)
+        ON CONFLICT (doc_number, source_county)
+        DO UPDATE SET
+            search_term     = EXCLUDED.search_term,
+            doc_type        = EXCLUDED.doc_type,
+            recorded_date   = EXCLUDED.recorded_date,
+            book_vol_page   = EXCLUDED.book_vol_page,
+            legal_description = EXCLUDED.legal_description,
+            doc_link        = EXCLUDED.doc_link,
+            doc_path        = EXCLUDED.doc_path,
+            abstract_num    = EXCLUDED.abstract_num,
+            county          = EXCLUDED.county,
+            survey_name     = EXCLUDED.survey_name,
+            acres           = EXCLUDED.acres,
+            subdivision     = EXCLUDED.subdivision,
+            case_number     = EXCLUDED.case_number,
+            misc_legal      = EXCLUDED.misc_legal,
+            scraped_at      = NOW()
+        RETURNING id;
+    """
+
+    insert_party_sql = """
+        INSERT INTO clerk.party (party_name)
+        VALUES (%s)
+        RETURNING id;
+    """
+
+    select_party_sql = """
+        SELECT id FROM clerk.party WHERE party_name = %s LIMIT 1;
+    """
+
+    insert_role_sql = """
+        INSERT INTO clerk.document_party_role (document_header_id, party_id, role, original_name)
+        VALUES (%s, %s, %s, %s)
+        ON CONFLICT DO NOTHING;
+    """
 
     with conn.cursor() as cur:
         for row in results_list:
-            # --------------------
-            # 1. Upsert document header
-            # --------------------
-            cur.execute("""
-                INSERT INTO clerk.documents_header
-                (search_term, doc_type, recorded_date, doc_number, book_vol_page, legal_description, source_county, doc_link)
-                VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
-                ON CONFLICT (doc_number, source_county)
-                DO UPDATE SET
-                    search_term = EXCLUDED.search_term,
-                    doc_type = EXCLUDED.doc_type,
-                    recorded_date = EXCLUDED.recorded_date,
-                    book_vol_page = EXCLUDED.book_vol_page,
-                    legal_description = EXCLUDED.legal_description,
-                    doc_link = EXCLUDED.doc_link,
-                    scraped_at = now()
-                RETURNING id;
-            """, tuple(row[c] for c in doc_cols))
 
+            # 1) UPSERT document
+            values = tuple(row.get(c) for c in doc_cols)
+
+            cur.execute(insert_doc_sql, values)
             document_id = cur.fetchone()[0]
 
-            # --------------------
-            # 2. Insert parties (grantor, grantee)
-            # --------------------
-            for role in ["grantor", "grantee"]:
+            # 2) Party loading
+            for role in ("grantor", "grantee"):
                 name = row.get(role)
-                if not name or name.strip() == "":
+                if not name or not name.strip():
                     continue
 
-                # Upsert into party_names
-                cur.execute("""
-                    INSERT INTO clerk.party_names (name)
-                    VALUES (%s)
-                    ON CONFLICT (name) DO NOTHING
-                    RETURNING id;
-                """, (name.strip(),))
+                name = name.strip()
 
-                result = cur.fetchone()
-                if result:
-                    party_id = result[0]
+                # Try insert
+                cur.execute(insert_party_sql, (name,))
+                r = cur.fetchone()
+                if r:
+                    party_id = r[0]
                 else:
-                    cur.execute("SELECT id FROM clerk.party_names WHERE name = %s", (name.strip(),))
+                    # fallback lookup
+                    cur.execute(select_party_sql, (name,))
                     party_id = cur.fetchone()[0]
 
-                # --------------------
-                # 3. Link in join table
-                # --------------------
-                cur.execute("""
-                    INSERT INTO clerk.document_parties (document_id, party_id, role)
-                    VALUES (%s, %s, %s)
-                    ON CONFLICT DO NOTHING;
-                """, (document_id, party_id, role))
+                # 3) Link party + doc
+                cur.execute(
+                    insert_role_sql,
+                    (document_id, party_id, role, name)
+                )
 
-    conn.commit()
-    print(f"Upserted {len(results_list)} documents and linked parties into clerk schema")
+        conn.commit()
+
 
 def check_search_term_exists(search_term, county, conn):
     """

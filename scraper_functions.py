@@ -62,7 +62,6 @@ def parse_legal_description(legal_desc, doc_type):
         r'.*SUR',
         r'.*GRANT',
         r'Survey- Name: .*'
-    
     ]
     unwanted_survey_phrases = [
         'Survey- Name: ',
@@ -73,10 +72,8 @@ def parse_legal_description(legal_desc, doc_type):
         'SURVEY',
         'SUR',
         'LEAGUE',
-
-
+        'Name: '
     ]
-
 
     acreage_patterns = [
         # --- Decimals (with parentheses) ---
@@ -84,35 +81,25 @@ def parse_legal_description(legal_desc, doc_type):
         r'\(\.\d+\s*ACRES\)',                # (.5 ACRES), (.5 ACS)
         r'\(\d+\.\d+\s*ACS\)',             # (5.44 ACRES), 5.44 ACS
         r'\(\.\d+\s*ACS\)',                # (.5 ACRES), (.5 ACS)
-
         # --- Decimals (without parentheses) ---
         r'\d*\.\d+\s*ACRES',             # (5.44 ACRES), 5.44 ACS
         r'\.\d+\s*ACRES',                # (.5 ACRES), (.5 ACS)
         r'\d*\.\d+\s*ACS',             # (5.44 ACRES), 5.44 ACS
         r'\.\d+\s*ACS',                # (.5 ACRES), (.5 ACS)
-
-
         # --- Mixed numbers (whole + fraction) ---
         r'\(\d+\s+\d+/\d+\s*ACRES\)',        # (1 1/2 ACRES), 1 1/2 ACS
         r'\d+\s+\d+/\d+\s*ACRES',
-
         # --- Pure fractions ---
         r'\(\d+/\d+\s*ACRES\)',              # (1/5 ACRES), 1/5 ACS
         r'\d+/\d+\s*ACRES',
-
         # --- Whole numbers ---
         r'\(PT \d*\.?\d+ ACRES\)', # (PT 5.44 ACRES)
         r'\(\d+\s*ACRES\)', 
         r'\d+\s*ACRES',                  # (5 ACRES), 5 ACS
         r'\d+ ACS',
-
         # --- Labelled or unusual formatting ---
        r'Acres?:\s*\d*\.?\d+', # Acres: 54.2 Acres: .96
        r'Acres: \d'
-
-        
-
-
     ]
     subdivision_patterns = [   
         r'L-\w+ (?:\b\w+\b\s+)*ADDN',   
@@ -143,21 +130,21 @@ def parse_legal_description(legal_desc, doc_type):
     
     abs_num = None
     survey_name = None
-    acreage = None
+    acres = None
     subdivision = None
     case_number = None
     misc_legal = None
 
     if doc_type == 'ABSTRACT JUDGEMT':
         case_number = legal_desc.strip()
-        return pd.Series([abs_num, survey_name, acreage, subdivision, case_number, misc_legal])
+        return pd.Series([abs_num, survey_name, acres, subdivision, case_number, misc_legal])
 
     #Checks for undescriptive legal descriptions to return as misc_legal
     for pattern in misc_legal_patterns:
         match = re.search(pattern, legal_desc, re.IGNORECASE)
         if match:
             misc_legal = legal_desc.strip()
-            return pd.Series([abs_num, survey_name, acreage, subdivision, case_number, misc_legal]) 
+            return pd.Series([abs_num, survey_name, acres, subdivision, case_number, misc_legal]) 
 
     #Extract Columns from legal description
     # ABS Number
@@ -176,7 +163,7 @@ def parse_legal_description(legal_desc, doc_type):
         if match:
             acreage_str=match.group(0)
             legal_desc=legal_desc.replace(acreage_str,'').strip()
-            acreage=acres_string_to_float(acreage_str)
+            acres=acres_string_to_float(acreage_str)
             break
 
 
@@ -186,7 +173,7 @@ def parse_legal_description(legal_desc, doc_type):
         match = re.search(pattern, legal_desc, re.IGNORECASE)
         if match:
             subdivision = legal_desc 
-            return pd.Series([abs_num, survey_name, acreage, subdivision, case_number, misc_legal])
+            return pd.Series([abs_num, survey_name, acres, subdivision, case_number, misc_legal])
 
     # Survey Name
 
@@ -197,7 +184,7 @@ def parse_legal_description(legal_desc, doc_type):
             legal_desc = legal_desc.replace(survey_name, '').strip()
             break
         if not match:
-            if abs_num or acreage:
+            if abs_num or acres:
                 survey_name = legal_desc.strip()
                 legal_desc = legal_desc.replace(survey_name, '').strip()
                 break
@@ -223,7 +210,7 @@ def parse_legal_description(legal_desc, doc_type):
     
 
     
-    return pd.Series([abs_num, survey_name, acreage, subdivision, case_number, misc_legal])
+    return pd.Series([abs_num, survey_name, acres, subdivision, case_number, misc_legal])
 
 
 
@@ -277,7 +264,7 @@ def get_search_results_table(search, county, county_link, page):
                     doc_link = f"{county_link.rstrip('/')}/doc/{doc_id}"
 
             parsed = parse_legal_description(legal_description, doc_type)   ### ⬅ ADDED
-            abs_num, survey_name, acreage, subdivision, case_number, misc_legal = parsed  ### ⬅ ADDED
+            abs_num, survey_name, acres, subdivision, case_number, misc_legal = parsed  ### ⬅ ADDED
 
             results_list.append({
                 "grantor": grantor,
@@ -290,9 +277,9 @@ def get_search_results_table(search, county, county_link, page):
                 "doc_link": doc_link,
 
                 # ✅ parsed fields
-                "abs_num":      abs_num,
+                "abstract_num":      abs_num,
                 "survey_name":  survey_name,
-                "acreage":      acreage,
+                "acres":      acres,
                 "subdivision":  subdivision,
                 "case_number":  case_number,
                 "misc_legal":   misc_legal,
