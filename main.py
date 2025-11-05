@@ -16,7 +16,7 @@ from playwright.sync_api import sync_playwright
 import dbutils
 import scraper_functions
 
-def main():
+def main(county_name, search_term, target_abstract_number):
     #options 
     test_mode=True      #whether to run in test mode or not
 
@@ -33,8 +33,7 @@ def main():
         "Anderson": {"code": "001", "link": "https://anderson.tx.publicsearch.us/", "host": "GovOS"},
     }
 
-    county_name="Freestone"
-    search_term="Emma Stone"
+
 
     county_code=counties[county_name]["code"]
     county_link=counties[county_name]["link"]
@@ -68,6 +67,8 @@ def main():
         else: #ignore until you build get_search_term_headers function 
             search_table=dbutils.get_search_term_headers(search_term, county_name, conn) 
 
+        search_table = transform.order_documents(search_table, target_abstract_number)
+        
         #display search_table
         df_search_table=pd.DataFrame(search_table)
         print(df_search_table)
@@ -94,4 +95,7 @@ def main():
     conn.close()
 
 if __name__ == "__main__":
-    main()
+    county_name="Freestone"
+    search_term="Emma Stone"
+    abstract_number="103"
+    main(county_name, search_term, abstract_number)

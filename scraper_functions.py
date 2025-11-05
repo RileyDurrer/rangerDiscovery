@@ -52,6 +52,7 @@ def parse_legal_description(legal_desc, doc_type):
     if not isinstance(legal_desc, str):
         return pd.Series([None, None, None, None, None, None])
     
+    # Define regex patterns
     abs_patterns = [
         r'AB#\d+',
         r'A-\d+',
@@ -74,7 +75,6 @@ def parse_legal_description(legal_desc, doc_type):
         'LEAGUE',
         'Name: '
     ]
-
     acreage_patterns = [
         # --- Decimals (with parentheses) ---
         r'\(\d+\.\d+\s*ACRES\)',             # (5.44 ACRES), 5.44 ACS
@@ -98,8 +98,8 @@ def parse_legal_description(legal_desc, doc_type):
         r'\d+\s*ACRES',                  # (5 ACRES), 5 ACS
         r'\d+ ACS',
         # --- Labelled or unusual formatting ---
-       r'Acres?:\s*\d*\.?\d+', # Acres: 54.2 Acres: .96
-       r'Acres: \d'
+        r'Acres?:\s*\d*\.?\d+', # Acres: 54.2 Acres: .96
+        r'Acres: \d'
     ]
     subdivision_patterns = [   
         r'L-\w+ (?:\b\w+\b\s+)*ADDN',   
@@ -113,17 +113,11 @@ def parse_legal_description(legal_desc, doc_type):
         r'\d{5} \d{5} \d{3}[A-Z]',
         r'L-\w+ (?:\b\w+\b\s+)*',
         r'\w+ \d{5}',
-        r'Subdivision\s?-',
-    
-
-        
-
-
+        r'Subdivision\s?-'
     ]
     misc_legal_patterns = [
         r'MULTIPLE TRACTS SEE INSTRUMENT',
-        r'N/A',
-
+        r'N/A'
     ]
 
 
@@ -146,7 +140,7 @@ def parse_legal_description(legal_desc, doc_type):
             misc_legal = legal_desc.strip()
             return pd.Series([abs_num, survey_name, acres, subdivision, case_number, misc_legal]) 
 
-    #Extract Columns from legal description
+    #Extract Columns from legal description---------------------
     # ABS Number
     for pattern in abs_patterns:
         match = re.search(pattern, legal_desc)
@@ -166,9 +160,7 @@ def parse_legal_description(legal_desc, doc_type):
             acres=acres_string_to_float(acreage_str)
             break
 
-
-
-    
+    #Subdivision
     for pattern in subdivision_patterns:
         match = re.search(pattern, legal_desc, re.IGNORECASE)
         if match:
@@ -176,7 +168,6 @@ def parse_legal_description(legal_desc, doc_type):
             return pd.Series([abs_num, survey_name, acres, subdivision, case_number, misc_legal])
 
     # Survey Name
-
     for pattern in survey_patterns:
         match = re.search(pattern, legal_desc)
         if match:
@@ -189,7 +180,6 @@ def parse_legal_description(legal_desc, doc_type):
                 legal_desc = legal_desc.replace(survey_name, '').strip()
                 break
 
-
     misc_legal = legal_desc.strip() 
     if survey_name:
         for phrase in unwanted_survey_phrases:
@@ -200,20 +190,10 @@ def parse_legal_description(legal_desc, doc_type):
 
     if survey_name=='':
         survey_name = None
-
-    
-
     if misc_legal=='':
         misc_legal = None
-        
-    
-    
 
-    
     return pd.Series([abs_num, survey_name, acres, subdivision, case_number, misc_legal])
-
-
-
 
 #Scrapes file metadata related to a search term from a county public records website 
 def get_search_results_table(search, county, county_link, page):
@@ -263,9 +243,11 @@ def get_search_results_table(search, county, county_link, page):
                     doc_id = checkbox_id.replace("table-checkbox-", "")
                     doc_link = f"{county_link.rstrip('/')}/doc/{doc_id}"
 
-            parsed = parse_legal_description(legal_description, doc_type)   ### ⬅ ADDED
-            abs_num, survey_name, acres, subdivision, case_number, misc_legal = parsed  ### ⬅ ADDED
+            # Parse legal description
+            parsed = parse_legal_description(legal_description, doc_type)   
+            abs_num, survey_name, acres, subdivision, case_number, misc_legal = parsed 
 
+            # Append to results
             results_list.append({
                 "grantor": grantor,
                 "grantee": grantee,
@@ -284,9 +266,7 @@ def get_search_results_table(search, county, county_link, page):
                 "case_number":  case_number,
                 "misc_legal":   misc_legal,
             })
-
-        
-        #---- End Row loop --------------------------------------------------------------------
+            #---- End Row loop --------------------------------------------------------------------
         print(f"Processed page {page_num}, total results so far: {len(results_list)}")
         
         # Grab the "Next" button
@@ -324,7 +304,7 @@ def get_search_results_table(search, county, county_link, page):
 
     print(f"Found {len(results_list)} results for {search}")
 
-    # Post-process results
+    # Post-process results--------------------------------
     for row in results_list:
         # Fix recorded_date
         date_str = row.get("recorded_date")
@@ -339,6 +319,8 @@ def get_search_results_table(search, county, county_link, page):
         # Add metadata
         row["search_term"] = search
         row["source_county"] = county
+        
+    
 
     return results_list
 
