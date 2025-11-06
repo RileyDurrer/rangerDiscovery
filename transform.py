@@ -15,7 +15,18 @@ def in_range(r, prev, nxt):
 
     return True
 
-def order_documents(search_table, target_abstract_number, target_survey_name, previous_ownership_date, next_ownership_date):
+def filter_documents(rows, previous_ownership_date, next_ownership_date):
+    """
+        1. Initial Ordering & Filtering
+        • Sort rows from newest → oldest using `recorded_date`.
+        • Optionally sort to prioritize *deed document types 
+        • Optionally remove documents falling outside known ownership timeline.
+    # Filter to ownership-relevant document dates
+    """
+    rows = [r for r in rows if in_range(r, previous_ownership_date, next_ownership_date)]
+    return rows
+
+def order_documents(rows, target_abstract_number, target_survey_name, previous_ownership_date, next_ownership_date):
     """
     Orders and filters search results PRIOR to document-level scraping.
 
@@ -28,11 +39,6 @@ def order_documents(search_table, target_abstract_number, target_survey_name, pr
 
     Pipeline Overview
     -----------------
-    1. Initial Ordering & Filtering
-        • Sort rows from newest → oldest using `recorded_date`.
-        • Optionally sort to prioritize *deed document types 
-        • Optionally remove documents falling outside known ownership timeline.
-
     2. Priority Classification
         Each row receives a priority score based on data strength:
             Priority 1 — Exact abstract number 
@@ -79,52 +85,62 @@ def order_documents(search_table, target_abstract_number, target_survey_name, pr
         chronological order in the database.
     """
 
-# Step 1: Initial Ordering & Filtering
-# Sort by recorded_date (newest first)
-rows.sort(key=lambda r: r.get("recorded_date") or date.min, reverse=True)
-# Filter to ownership-relevant document dates
-rows = [r for r in rows if in_range(r, previous_ownership_date, next_ownership_date)]
+    # Step 2: Priority Classification
+    for r in rows:
+        abstract_num = r.get("abstract_num", "").strip().upper()
+        survey_name = r.get("survey_name", "").strip().upper()
+        subdivision = r.get("subdivision", "").strip().upper()
+        case_number = r.get("case_number", "").strip().upper()
+        misc_legal = r.get("misc_legal", "").strip().upper()
+        doc_type = r.get("doc_type", "").strip().upper()
 
-#Sort to prioritize "*DEED" document types
-def deed_priority_key(r):
-    doc_type = r.get("doc_type", "").upper()
-    return 0 if "DEED" in doc_type else 1
+        # Priority 1: Exact abstract number 
+        if abstract_num and abstract_num == target_abstract_number:
+            r["priority"] = 1
+            continue
 
-rows.sort(key=deed_priority_key)
+        # Priority 2: Exact survey name match
+        if survey_name and target_survey_name and (target_survey_name in survey_name or survey_name in target_survey_name):
+            r["priority"] = 2
+            continue
+        
+        # Priority 3-5: Fuzzy / similar survey name
+        if survey_name and target_survey_name:
+            ratio = fuzz.token_set_ratio(survey_name, target_survey_name)
+            if ratio >= 95:
+                r["priority"] = 3
+            elif ratio >= 90:
+                r["priority"] = 4
+            elif ratio >= 80:
+                r["priority"] = 5
+            continue
+        # Priority 6: Inconclusive or vague legal descriptions
+        if not abtract_num and not subdivision and not case_number and not survey_name:
+            r["priority"] = 6
+            continue
+        # Priority 7: Judgement / Affidavit / Heirship / CC JUDGMT types
+        if any(keyword in doc_type for keyword in ["JUDGMENT", "AFFIDAVIT", "HEIRSHIP", "CC JUDGMT"]):
+            r["priority"] = 7
+            continue
+        # Priority 8: Remaining rows
+        r["priority"] = 8
+        
+        # Step 3: Final Ordering
+        # 3) weakest criteria -> sort first
+        rows.sort(key=lambda r: -(r.get("recorded_date") or date.min).toordinal())
 
-# Step 2: Priority Classification
-for r in rows:
-    abstract_num = r.get("abstract_num", "").strip().upper()
-    survey_name = r.get("survey_name", "").strip().upper()
-    misc_legal = r.get("misc_legal", "").strip().upper()
-    doc_type = r.get("doc_type", "").strip().upper()
+        # 2)
+        rows.sort(key=lambda r: 0 if "DEED" in (r.get("doc_type","").upper()) else 1)
 
-    # Priority 1: Exact abstract number 
-    if abstract_num and abstract_num == target_abstract_number:
-        r["priority"] = 1
-        continue
+        # 1) strongest criteria -> sort last
+        rows.sort(key=lambda r: r["priority"])
+    return rows
 
-    # Priority 2: Exact survey name match
-    if survey_name and target_survey_name and (target_survey_name in survey_name or survey_name in target_survey_name):
-        r["priority"] = 2
-        continue
-    
-    # Priority 3-5: Fuzzy / similar survey name
-    if survey_name and target_survey_name:
-        ratio = fuzz.token_set_ratio(survey_name, target_survey_name)
-        if ratio >= 90:
-            r["priority"] = 3
-        elif ratio >= 75:
-            r["priority"] = 4
-        elif ratio >= 50:
-            r["priority"] = 5
-        continue
-    # Priority 6: Inconclusive or vague legal descriptions
-    #if legal description = misc_legal 
-    
-    
 
-    
+        
+        
+
+        
 
 
 

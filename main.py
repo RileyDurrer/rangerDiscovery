@@ -5,6 +5,7 @@ import random
 import sys
 import time
 from datetime import datetime
+import fuzzywuzzy as fuzz
 
 # Third-party packages
 import pandas as pd
@@ -72,6 +73,9 @@ def main(county_name, search_term, target_abstract_number):
         #display search_table
         df_search_table=pd.DataFrame(search_table)
         print(df_search_table)
+        
+        #order & filter documents
+        df_search_table=transform.order_documents_df(df_search_table, target_abstract_number)
 
         if test_mode:
             #save to csv for review
