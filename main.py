@@ -75,7 +75,8 @@ def main(county_name, search_term, target_abstract_number):
         print(df_search_table)
         
         #order & filter documents
-        df_search_table=transform.order_documents_df(df_search_table, target_abstract_number)
+        search_table=transform.filter_documents(search_table, None, None)
+        search_table=transform.order_documents_df(search_table, target_abstract_number, target_survey_name)
 
         if test_mode:
             #save to csv for review
