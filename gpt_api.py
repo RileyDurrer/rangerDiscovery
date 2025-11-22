@@ -6,6 +6,19 @@ load_dotenv(dotenv_path=r"C:\Users\milom\Documents\landman\.env")
 client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 
 
+def prompt_builder(document_type):
+
+
+    base_prompt = ""
+    Universal_columns = [
+    ]
+
+    match document_type:
+        case "Deed":   
+
+    
+
+
 def analyze_document_direct(pdf_path, prompt):
     # 1. Upload the file
     file_obj = client.files.create(
@@ -46,3 +59,4 @@ prompt = """General Prompt	You are acting as a senior title examiner preparing a
     Land Description	Provide the land description verbatim as it appears (survey name, abstract number, subdivision, block/lot, or short metes-and-bounds). If the document references multiple tracts, list each tract separately in the order given. If no land description is present, state ‘No land description—blanket instrument.’ If the instrument clearly does not apply to real property (e.g., lien release against a person only), return ‘Not applicable.’"""
 pdf_path = r"C:\Users\milom\Documents\landman\county_clerk_docs\Freestone\tester.pdf"
 print(analyze_document_direct(pdf_path, prompt))
+

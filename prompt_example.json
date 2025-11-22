@@ -1,0 +1,61 @@
+{
+  "Entries": [
+    {
+      "property": {
+        "legal": "",
+        "abstract_no": "",
+        "survey": ""wh
+      },
+      "parties": {
+        "grantors": [
+          {
+            "name": "",
+            "capacity": "",
+            "address": "",
+            "phone": "",
+            "email": "",
+            "marital_status": ""
+          }
+        ],
+        "grantees": [
+          {
+            "name": "",
+            "capacity": "",
+            "address": "",
+            "phone": "",
+            "email": ""
+          }
+        ],
+        "executed_by": [
+          {
+            "name": "",
+            "capacity": ""
+          }
+        ],
+        "notaries": [],
+        "affiants": [],
+        "heirs": [],
+        "trustees": [],
+        "debtors": [],
+        "creditors": []
+      },
+      "columns": {
+        "Instrument Title": "",
+        "Instrument Date": "",
+        "Effective Date": "",
+        "File Date": "",
+        "Recording Reference": "",
+        "County": "",
+        "State": "",
+        "Property Description": "",
+        "Tract / Abstract Number": "",
+        "Survey Name": "",
+        "Chain of Title Effect": "",
+        "Prior Instrument Referenced": "",
+        "Remarks / Examiner Notes": "",
+
+        "***DOC_TYPE_SPECIFIC_FIELDS***": ""
+      }
+    }
+  ]
+}
