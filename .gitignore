@@ -18,6 +18,10 @@
 
 !*.json
 
+!test.ipynb
+!testmain.ipynb
+!search_table.csv
+
 
 # Optional: ignore temporary/log files
 *.log
