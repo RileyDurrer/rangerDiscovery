@@ -1,0 +1,20 @@
+{
+    "universal_information": {
+        "instrument_title": "",
+        "instrument_date": "",
+        "file_date": "",
+        "recording_reference": "",
+        "county": "",
+        "state": "",
+
+        "parties": [{
+            "name": "",
+            "role": "",
+            "capacity": "",
+            "marital_status": "",
+            "phone": "",
+            "email": "",
+            "address": ""
+        }]
+    }
+}

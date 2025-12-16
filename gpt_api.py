@@ -9,12 +9,31 @@ client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 def prompt_builder(document_type):
 
 
-    base_prompt = ""
+
+    general_prompt = ""
     Universal_columns = [
     ]
 
-    match document_type:
-        case "Deed":   
+    affidavit_types=[]
+    contract_agreement_types=[]
+    corporate_trustee_types=[]
+    deed_types=["WARNTY DEED" ,]
+    Lease_types=[]
+    Lien_Types=["MECHANICS LIEN"]
+    Lien_Notice_Types=[]
+    Notice_Type=[]
+    Probate_Heirship_Type=[]
+    Title_Clairification=["EASEMENT" ,"RIGHT OF WAY"]
+    
+    type_prompt
+    
+
+    #adds type specific prompt section
+    #issue doc types: (Release: many possible types, )
+    if DEED in document_type:
+        type_prompt=""
+    elif 
+        
 
     
 
